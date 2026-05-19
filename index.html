@@ -177,6 +177,7 @@ function buildMap() {
   clearSpawn(1, 1);
   clearSpawn(1, COLS-2);
   clearSpawn(ROWS-2, 1);
+  clearSpawn(ROWS-2, Math.floor(COLS/2));
 }
 
 function clearSpawn(rr, cc) {
@@ -188,9 +189,9 @@ function clearSpawn(rr, cc) {
 }
 
 // --- Directions ---
-const DIR = { UP: 0, RIGHT: 1, DOWN: 2, LEFT: 3 };
-const DX = [0, 1, 0, -1];
-const DY = [-1, 0, 1, 0];
+const DIR = { UP: 0, RIGHT: 1, DOWN: 2, LEFT: 3, UP_RIGHT: 4, DOWN_RIGHT: 5, DOWN_LEFT: 6, UP_LEFT: 7 };
+const DX = [0, 1, 0, -1, 0.7071, 0.7071, -0.7071, -0.7071];
+const DY = [-1, 0, 1, 0, -0.7071, 0.7071, 0.7071, -0.7071];
 
 // --- Tank class ---
 class Tank {
@@ -199,9 +200,9 @@ class Tank {
     this.dir = dir;
     this.color = color;
     this.isPlayer = isPlayer;
-    this.speed = isPlayer ? 1 : 1.2;
+    this.speed = isPlayer ? 1 : 0.4;
     this.cooldown = 0;
-    this.cooldownTime = isPlayer ? 20 : 60;
+    this.cooldownTime = isPlayer ? 20 : 180;
     this.alive = true;
     this.size = 13;
   }
@@ -248,12 +249,13 @@ class Tank {
     if (this.cooldown > 0) this.cooldown--;
   }
 
-  shoot() {
+  shoot(dirOverride) {
     if (this.cooldown > 0) return null;
     this.cooldown = this.cooldownTime;
-    const bx = this.x + DX[this.dir] * (this.size + 4);
-    const by = this.y + DY[this.dir] * (this.size + 4);
-    return new Bullet(bx, by, this.dir, this.isPlayer);
+    const d = dirOverride !== undefined ? dirOverride : this.dir;
+    const bx = this.x + DX[d] * (this.size + 4);
+    const by = this.y + DY[d] * (this.size + 4);
+    return new Bullet(bx, by, d, this.isPlayer);
   }
 
   draw() {
@@ -544,7 +546,14 @@ function update() {
 
     // Shoot
     if (keys['Space']) {
-      const bullet = player.shoot();
+      let shootDir = player.dir;
+      if (dx !== 0 && dy !== 0) {
+        if (dy < 0 && dx > 0) shootDir = DIR.UP_RIGHT;
+        else if (dy > 0 && dx > 0) shootDir = DIR.DOWN_RIGHT;
+        else if (dy > 0 && dx < 0) shootDir = DIR.DOWN_LEFT;
+        else if (dy < 0 && dx < 0) shootDir = DIR.UP_LEFT;
+      }
+      const bullet = player.shoot(shootDir);
       if (bullet) bullets.push(bullet);
     }
 
